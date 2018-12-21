@@ -16,7 +16,11 @@
     "url": "https://github.com/BenjaminFF/ef-ui.git"
   },
   "dependencies": {
-    "vue": "^2.5.2"
+    "animate.css": "^3.7.0",
+    "animejs": "^2.2.0",
+    "element-ui": "^2.4.11",
+    "vue": "^2.5.2",
+    "vue-resize": "^0.4.4"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",

@@ -3,12 +3,21 @@
 import Vue from 'vue'
 import App from './App'
 
-import efButton from '../lib/button'
-import efTheme from '../packages/ef-theme/lib/index.css'
+import efui from '../packages/index'
+import '../packages/ef-theme/lib/index.css'
+import element from 'element-ui'
+import 'element-ui/lib/theme-chalk/index.css';
+import 'vue-resize/dist/vue-resize.css'
+import VueResize from 'vue-resize'
+
+
 
 Vue.config.productionTip = false
 
-Vue.use(efButton);
+Vue.use(efui);
+Vue.use(element)
+Vue.use(VueResize)
+
 
 /* eslint-disable no-new */
 new Vue({
