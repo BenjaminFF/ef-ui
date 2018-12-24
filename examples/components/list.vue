@@ -8,7 +8,7 @@
               'is-horizontal':orientation=='horizontal',
            }
          ]"
-         :style="{marginRight:mMarginRight,marginBottom:mMarginBottom,width:mWrapWidth,height:mWrapHeight}">
+         :style="{marginRight:mMarginRight+'px',marginBottom:mMarginBottom+'px',width:mWrapWidth,height:mWrapHeight}">
       <div style="flex-shrink: 0;flex-grow: 0" :style="{display:this.orientation=='horizontal'?'flex':'block'}">
         <slot></slot>
       </div>
@@ -20,9 +20,13 @@
               'is-horizontal':orientation=='horizontal',
            }
          ]"
-         @click="handleTrackClick($event)"
+         @mousedown="handleTrackClick($event)"
          v-if="nScrollbarData.visible">
       <div class="el-list__scrollbar__thumb"
+           @mousedown="thumbMouseDown($event)"
+           @mousemove="thumbMouseMove($event)"
+           @mouseup="nScrollbarData.thumbOnMove=false"
+           @mouseleave="nScrollbarData.thumbOnMove=false"
            :style="thumbStyle"
            v-if="nScrollbarData.thumbVisible">
       </div>
@@ -44,7 +48,7 @@
       props:{
         orientation:{
           type:String,
-          default:'vertical'
+          default:'horizontal'
         },
 
         list:{
@@ -70,10 +74,10 @@
           return this.orientation=='vertical'?this.wrapHeight:'auto'
         },
         mMarginRight(){
-          return this.orientation=='vertical'?-this.nScrollbarData.width+'px':0
+          return this.orientation=='vertical'?-this.nScrollbarData.width:0
         },
         mMarginBottom(){
-          return this.orientation=='vertical'?0:-this.nScrollbarData.height+'px'
+          return this.orientation=='vertical'?0:-this.nScrollbarData.height
         }
       },
       created(){
@@ -91,33 +95,85 @@
         handleScroll(){
             this.updateThumb();
         },
+        thumbMouseDown(event){
+          this.nScrollbarData.thumbOnMove=true;
+          this.nScrollbarData.thumbPivotX=event.offsetX;
+          this.nScrollbarData.thumbPivotY=event.offsetY;
+        },
+        thumbMouseMove(event){
+          if(this.nScrollbarData.thumbOnMove==true){
+            let warp=this.$el.children[0];
+            if(this.orientation=='vertical'){
+              let offsetY=event.offsetY-this.nScrollbarData.thumbPivotY;
+              warp.scrollTop+=offsetY;
+            }else if(this.orientation=='horizontal'){
+              let offsetX=event.offsetX-this.nScrollbarData.thumbPivotX;
+              warp.scrollLeft+=offsetX;
+            }
+          }
+        },
         handleTrackClick(event){
           if(event.target.className!='el-list__scrollbar__thumb'){
             let warp=this.$el.children[0];
             if(this.orientation=='vertical'){
               if(event.offsetY<=this.nScrollbarData.thumbMoveY){
-                this.nScrollbarData.thumbMoveY=event.offsetY;
-                this.thumbStyle.transform='translateY('+ this.nScrollbarData.thumbMoveY+'px)';
-                let scrollTop=Math.ceil(this.nScrollbarData.thumbMoveY*warp.scrollHeight/warp.clientHeight);
-                warp.scrollTop=scrollTop;
+                let scrollTop=Math.ceil(event.offsetY*warp.scrollHeight/warp.clientHeight);
+                this.smoothScroll(scrollTop,warp,200);
               }else{
-                this.nScrollbarData.thumbMoveY=event.offsetY-this.nScrollbarData.thumbHeight;
-                let scrollTop=Math.ceil(this.nScrollbarData.thumbMoveY*warp.scrollHeight/warp.clientHeight);
-                warp.scrollTop=scrollTop;
+                let scrollTop=Math.ceil((event.offsetY-this.nScrollbarData.thumbHeight)*warp.scrollHeight/warp.clientHeight);
+                this.smoothScroll(scrollTop,warp,200);
               }
             }else if(this.orientation=='horizontal'){
               if(event.offsetX<=this.nScrollbarData.thumbMoveX){
-                this.nScrollbarData.thumbMoveX=event.offsetX;
-                this.thumbStyle.transform='translateX('+ this.nScrollbarData.thumbMoveX+'px)';
-                let scrollLeft=Math.ceil(this.nScrollbarData.thumbMoveX*warp.scrollWidth/warp.clientWidth);
-                warp.scrollLeft=scrollLeft;
+                let scrollLeft=Math.ceil(event.offsetX*warp.scrollWidth/warp.clientWidth);
+                this.smoothScroll(scrollLeft,warp,200);
               }else{
-                this.nScrollbarData.thumbMoveX=event.offsetX-this.nScrollbarData.thumbWidth;
-                let scrollLeft=Math.ceil(this.nScrollbarData.thumbMoveX*warp.scrollWidth/warp.clientWidth);
-                warp.scrollLeft=scrollLeft;
+                let scrollLeft=Math.ceil((event.offsetX-this.nScrollbarData.thumbWidth)*warp.scrollWidth/warp.clientWidth);
+                this.smoothScroll(scrollLeft,warp,200);
               }
             }
           }
+        },
+        //linear,duration为ms
+        smoothScroll(end,el,duration){
+          let flashTimes=duration/1000*60;
+          let pxPerTime,direction;
+          if(this.orientation=='vertical'){
+            pxPerTime=Math.round(Math.abs(el.scrollTop-end)/flashTimes);
+            direction=el.scrollTop>end?'up':'down';
+          }else if(this.orientation=='horizontal'){
+            pxPerTime=Math.round(Math.abs(el.scrollLeft-end)/flashTimes);
+            direction=el.scrollLeft>end?'left':'right';
+          }
+          let step = ()=> {
+            if(this.orientation=='vertical'){
+              if(direction=='down'){
+                if(end-el.scrollTop<=0){
+                  return;
+                }
+                el.scrollTop+=pxPerTime;
+              }else {
+                if(end-el.scrollTop>=0){
+                  return;
+                }
+                el.scrollTop-=pxPerTime;
+              }
+            }else if(this.orientation=='horizontal'){
+              if(direction=='left'){
+                if(end-el.scrollLeft>=0){
+                  return;
+                }
+                el.scrollLeft-=pxPerTime;
+              }else {
+                if(end-el.scrollLeft<=0){
+                  return;
+                }
+                el.scrollLeft+=pxPerTime;
+              }
+            }
+            requestAnimationFrame(step);
+          }
+         step();
         },
         initnScrollbarData(el){
           let nScrollbarWidth=this.orientation=='horizontal'?el.clientWidth:el.offsetWidth-el.clientWidth;
@@ -133,7 +189,10 @@
             thumbHeight:thumbHeight,
             thumbMoveX:0,
             thumbMoveY:0,
-            visible:visible
+            visible:visible,
+            thumbOnMove:false,
+            thumbPivotX:"",
+            thumbPivotY:"",
           }
           this.thumbStyle=this.orientation=='horizontal'?
             {width: thumbWidth+'px',
